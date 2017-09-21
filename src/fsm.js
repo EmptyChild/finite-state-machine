@@ -6,7 +6,11 @@ class FSM {
     constructor(config) {
         this.states = config.states;
         this.initial = config.initial;
-        this.CurrentState = config.states[this.initial];
+        this.CurrentState = {
+            prev: null,
+            state: this.states[this.initial],
+            next: null,
+        };
         let states_keys = Object.keys(this.states);
         for (let state of states_keys) {
             this.states[state].toString = () => state;
@@ -19,7 +23,7 @@ class FSM {
      * @returns {String}
      */
     getState() {
-        return `${this.CurrentState}`;
+        return `${this.CurrentState.state}`;
 
     }
 
@@ -29,7 +33,12 @@ class FSM {
      */
     changeState(state) {
         if (this.states.hasOwnProperty(state)) {
-            this.CurrentState = this.states[state];
+            this.CurrentState.next = {
+                prev: this.CurrentState,
+                state: this.states[state],
+                next: null,
+            };
+            this.CurrentState = this.CurrentState.next;
         } else {
             throw new Error("State is missing");
         }
@@ -40,8 +49,8 @@ class FSM {
      * @param event
      */
     trigger(event) {
-        if (this.CurrentState.transitions.hasOwnProperty(event)) {
-            this.changeState(this.CurrentState.transitions[event]);
+        if (this.CurrentState.state.transitions.hasOwnProperty(event)) {
+            this.changeState(this.CurrentState.state.transitions[event]);
         } else {
             throw new Error("Event is unavaible from this state");
         }
@@ -51,7 +60,7 @@ class FSM {
      * Resets FSM state to initial.
      */
     reset() {
-        this.CurrentState = this.states[this.initial]
+        this.changeState(this.initial);
     }
 
     /**
@@ -79,19 +88,34 @@ class FSM {
      * Returns false if undo is not available.
      * @returns {Boolean}
      */
-    undo() {}
+    undo() {
+        if (!this.CurrentState.prev) {
+            return false;
+        }
+        this.CurrentState = this.CurrentState.prev;
+        return true;
+    }
 
     /**
      * Goes redo to state.
      * Returns false if redo is not available.
      * @returns {Boolean}
      */
-    redo() {}
+    redo() {
+        if (!this.CurrentState.next) {
+            return false;
+        }
+        this.CurrentState = this.CurrentState.next;
+        return true;
+
+    }
 
     /**
      * Clears transition history
      */
-    clearHistory() {}
+    clearHistory() {
+        this.CurrentState.prev = null;
+    }
 }
 
 module.exports = FSM;
